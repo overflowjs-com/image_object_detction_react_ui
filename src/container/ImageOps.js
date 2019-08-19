@@ -38,7 +38,7 @@ export default class ImageOps extends React.Component {
         
         reader.readAsDataURL(file);
         reader.onload = () => {
-            this.setState({image_object: reader.result});
+            this.setState({image_object: reader.result, image_object_details: {}, active_type: null});
         };
 
     }
@@ -46,18 +46,21 @@ export default class ImageOps extends React.Component {
     processImageObject(type) {
 
         this.setState({active_type: type}, () => {
-            api("detect_image_objects", {
-                type,
-                data: this.state.image_object
-            }).then((response) => {
-                
-                const filtered_data = response;
-                const image_details = this.state.image_object_details;
-    
-                image_details[filtered_data.type] = filtered_data.data;
-    
-                this.setState({image_object_details: image_details });
-            });
+
+            if(!this.state.image_object_details[this.state.active_type]) {
+                api("detect_image_objects", {
+                    type,
+                    data: this.state.image_object
+                }).then((response) => {
+                    
+                    const filtered_data = response;
+                    const image_details = this.state.image_object_details;
+        
+                    image_details[filtered_data.type] = filtered_data.data;
+        
+                    this.setState({image_object_details: image_details });
+                });
+            }
         });
     }
 
@@ -113,7 +116,7 @@ export default class ImageOps extends React.Component {
                                             <Typography variant="h4" color="textPrimary" component="h4">
                                                 {this.state.active_type.toUpperCase()}
                                             </Typography>
-                                            <ImageDetails data = {this.state.image_object_details[this.state.active_type]}></ImageDetails>
+                                            <ImageDetails type={this.state.active_type} data = {this.state.image_object_details[this.state.active_type]}></ImageDetails>
                                         </CardContent>
                                     </Card>
                                 </Grid>
@@ -150,14 +153,28 @@ class ImageDetails extends React.Component {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {this.props.data.map(row => (
-                        <TableRow key={row.className}>
-                            <TableCell component="th" scope="row">
-                            {row.className}
-                            </TableCell>
-                            <TableCell align="right">{row.probability.toFixed(2)}</TableCell>
-                        </TableRow>
-                        ))}
+                        {this.props.data.map((row) => {
+                            if (this.props.type === "imagenet") {
+                                return (
+                                    <TableRow key={row.className}>
+                                        <TableCell component="th" scope="row">
+                                        {row.className}
+                                        </TableCell>
+                                        <TableCell align="right">{row.probability.toFixed(2)}</TableCell>
+                                    </TableRow>
+                                )
+                            } else if(this.props.type === "coco-ssd") {
+                                return (
+                                    <TableRow key={row.className}>
+                                        <TableCell component="th" scope="row">
+                                        {row.class}
+                                        </TableCell>
+                                        <TableCell align="right">{row.score.toFixed(2)}</TableCell>
+                                    </TableRow>
+                                )
+                            }
+                            }) 
+                        }
                     </TableBody>
                     </Table>
                 </Paper>
